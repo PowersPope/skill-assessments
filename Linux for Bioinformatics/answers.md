@@ -5,23 +5,27 @@ A1: /home/ubuntu
 Q2: What is the output of this command?
 
 A2: 
+```
 ubuntu@ip-172-31-84-180:~$ ls my_folder/
 hello_world.txt
-
+```
 Q3: What is the output of each ls command?
 
 A3:
+```
 ubuntu@ip-172-31-84-180:~$ ls my_folder
 ubuntu@ip-172-31-84-180:~$ ls my_folder2/
 hello_world.txt
-
+```
 Q4: What is the output of each?
 
 A4: 
+```
 ubuntu@ip-172-31-84-180:~$ ls my_folder
 ubuntu@ip-172-31-84-180:~$ ls my_folder2/
 ubuntu@ip-172-31-84-180:~$ ls my_folder3/
 hello_world.txt
+```
 
 Q5: What editor did you use and what was the command to save your file changes?
 
@@ -29,7 +33,7 @@ A5: I used Vim, and you can save the changes using :wq
 
 Q6: What is the error?
 
-A6: sudouser@ec2-3-89-108-167.compute-1.amazonaws.com: Permission denied (publickey).
+A6: `sudouser@ec2-3-89-108-167.compute-1.amazonaws.com: Permission denied (publickey).`
 
 Q7: What was the solution?
 
@@ -54,41 +58,52 @@ nice Salmon logo.
 Q9: What is the output of this command?
 
 A9:
+```
 serveruser@ip-172-31-84-180:~$ sudo ls /root
 [sudo] password for serveruser:
 Sorry, try again.
 [sudo] password for serveruser:
 serveruser is not in the sudoers file.  This incident will be reported.
+```
 
 Q10: What is the output of `flask --version`?
 
 A10: 
+```
 (base) serveruser@ip-172-31-84-180:~$ flask --version
 Python 3.9.12
 Flask 2.0.3
 Werkzeug 2.0.3
+```
 
 Q11: What is the output of `mamba -V`?
 
 A11: 
+```
 (base) serveruser@ip-172-31-84-180:~$ mamba -V
 conda 4.13.0
+```
 
 Q12: What is the output of `which python`?
 
 A12: 
+```
 (py27) serveruser@ip-172-31-84-180:~$ which python
 /home/serveruser/miniconda3/envs/py27/bin/python
+```
 
 Q13: What is the output of `which python` now?
 
 A13: 
+```
 (base) serveruser@ip-172-31-84-180:~$ which python
 /home/serveruser/miniconda3/bin/python
+```
 
 Q14: What is the output of `salmon -h`?
 
 A14: 
+```
 (salmonEnv) serveruser@ip-172-31-84-180:~$ salmon -h
 salmon v1.4.0
 
@@ -103,7 +118,7 @@ Commands:
      alevin     : single cell analysis
      swim       : perform super-secret operation
      quantmerge : merge multiple quantifications into a single file
-
+```
 
 Q15: What does the `-o athal.fa.gz` part of the command do?
 
