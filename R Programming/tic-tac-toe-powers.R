@@ -119,12 +119,12 @@ check_board <- function(board) {
   # If statements to check to see if anyone won the game or not
   if (sum(grepl(3, X_total)) == 1){
     cat("##############################\n")
-    cat("         X Has won the Game!\n")
+    cat("      X Has won the Game!\n")
     cat("##############################\n")
     result <- TRUE
   } else if (sum(grepl(3, O_total)) == 1) {
     cat("##############################\n")
-    cat("         O Has won the Game!\n")
+    cat("      O Has won the Game!\n")
     cat("##############################\n")
     result <- TRUE
   } else {
@@ -186,6 +186,7 @@ repeat {
     }
     # Change the order of the order vector
     order.turn <- c(order.turn[2], order.turn[1])
+    round.n <- round.n + 1
     if (any(is.na(gameboard)) == FALSE) {
       break
     }
@@ -210,4 +211,6 @@ repeat {
   }
 }
 
-cat("\nLooks like a tie game! Better luck next time!\n")
+if (any(is.na(gameboard)) == FALSE) { 
+  cat("\nLooks like a tie game! Better luck next time!\n")
+}
