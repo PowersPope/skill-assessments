@@ -8,14 +8,14 @@ output:
 ---
 
 ```{r set up}
-knitr::opts_chunk$set(echo = TRUE, warning=FALSE, message=FALSE)
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 suppressPackageStartupMessages(library(tidyverse))
 suppressPackageStartupMessages(library(plyr))
 suppressPackageStartupMessages(library(plotly))
 suppressPackageStartupMessages(library(shiny))
-options(digits=2)
+options(digits = 2)
 knitr::knit_hooks$set(inline = function(x) {
-                        knitr:::format_sci(x,'md')
+  knitr:::format_sci(x, "md")
 })
 ```
 
@@ -39,8 +39,8 @@ data. This data set explores the Gross Domestic Product (GDP) per capita of each
 
 ```{r load in data}
 # load the data into a tibble
-data <- read_csv('gapminder_clean.csv')
-colnames(data)[1] <- 'index'
+data <- read_csv("gapminder_clean.csv")
+data <- dplyr::rename(data, "index" = "...1")
 ```
 To begin we have been asked to look at the year 1962. In particular the researcher would like us to 
 graph and check the correlation between the GDP per cap of each country and the amount of CO2 emissions 
@@ -55,12 +55,12 @@ applied to it. This way we can see if the two variables seem to be correlated.
 data.year <- filter(data, Year == 1962)
 
 # scatter plot
-ggplot(data.year, aes(`CO2 emissions (metric tons per capita)`, `gdpPercap`))+
-  geom_point()+
-  geom_smooth(method='lm', se=FALSE)+
-  labs(title='CO2 emissions vs gdpPercap Scatter Plot w/ lm fit model\nYear filtered to only 1962')
+ggplot(data.year, aes(`CO2 emissions (metric tons per capita)`, `gdpPercap`)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(title = "CO2 emissions vs gdpPercap Scatter Plot w/ lm fit model\nYear filtered to only 1962")
 
-# generate the correlation 
+# generate the correlation
 cor.year <- cor.test(data.year$`CO2 emissions (metric tons per capita)`, data.year$gdpPercap)
 
 # assign them to variables
@@ -86,29 +86,27 @@ highest correlated Year.
 
 ```{r find best correlation}
 
-# function to generate the correlation between all years
-correlation.group <- function(df){
-  return(data.frame(COR = cor.test(df$`CO2 emissions (metric tons per capita)`, df$gdpPercap)$estimate[[1]]))
-}
+# Grab the highest year
+high.corr <- data %>%
+  group_by(Year) %>%
+  summarise(estimate = cor.test(`CO2 emissions (metric tons per capita)`, gdpPercap)$estimate) %>%
+  slice_max(order_by = estimate) %>%
+  inner_join(data, by = "Year")
 
-# calculate the amount of correlation for each year
-correlation.year <- ddply(data, .(Year),  correlation.group)
-# grab the highest correlated year
-highest.year <- correlation.year[order(correlation.year$COR, decreasing=TRUE),][1,'Year']
-
-# Subset the data
-high.corr <- filter(data, Year == highest.year)
+highest.year <- high.corr$Year[1]
 ```
+
 Once we run this correlation test we find out that the year `r highest.year` has the highest
 correlation between CO2 emissions and GDP per cap. We are asked to produce an interactive scatter plot
 for the Year, so that we can better explore the data within this year.
 
 
 ```{r ggplotly}
-ggplotly(ggplot(high.corr, aes(x=`CO2 emissions (metric tons per capita)`, y=`gdpPercap`))+
-  geom_point(aes(color=continent, size=pop))+
-  labs(title="CO2 emission vs gdpPercap grouped by continent\nSubset by Year 1967"))
+ggplotly(ggplot(high.corr, aes(x = `CO2 emissions (metric tons per capita)`, y = `gdpPercap`)) +
+  geom_point(aes(color = continent, size = pop)) +
+  labs(title = "CO2 emission vs gdpPercap grouped by continent\nSubset by Year 1967"))
 ```
+
 
 
 # Independent Questions
@@ -128,7 +126,7 @@ plot the histogram of the column and see how it looks.
 
 ```{r data check}
 # Check the distribution of the data
-hist(data$`Energy use (kg of oil equivalent per capita)`, main="Histogram of All Energy Use", xlab="Energy use (kg of oil equivalent per capita)", breaks=100)
+hist(data$`Energy use (kg of oil equivalent per capita)`, main = "Histogram of All Energy Use", xlab = "Energy use (kg of oil equivalent per capita)", breaks = 100)
 ```
 
 Looking at the histogram above, we can see the right skew of our continuous dependent variable. 
@@ -145,36 +143,26 @@ a large portion of the data, with minimal effort.
 
 ```{r barplot initial}
 # import country df
-continent.df <- read_csv('continents2.csv')
-continent.df <- rbind(continent.df, list('Arab World',NA,NA,NA,NA,'Asia',NA,NA,NA,NA,NA))
+continent.df <- read_csv("continents2.csv")
+continent.df <- rbind(continent.df, list("Arab World", NA, NA, NA, NA, "Asia", NA, NA, NA, NA, NA))
 
-
-index <- 0
-for (country in continent.df$name) {
-  index <- index + 1
-  sub.x <- which(data$`Country Name` == country)
-  len.sub.x <- length(sub.x)
-  if (len.sub.x > 0){
-    data[sub.x,'continent'] <- continent.df[index, 'region']
-  }
-}
-
+filled_data <- data %>% left_join(continent.df[, c("name", "region")], by = c("Country Name" = "name"))
 ```
 
-Once we bring in the other data frame and use it to fill in `continent` we get `r sum(is.na(data$continent))`
-`NA` values.
+Once we bring in the other data frame and use it to fill in a new column called `region` we get 
+`r sum(is.na(filled_data$region))` `NA` values.
 Which is a huge improvement from before. Let's graph our `Energy use (kg of oil equivalent per capita)` 
 column by the newly filled in continent column. 
-While also getting rid of the NA rows within `continent`, so they don't confuse the
+While also getting rid of the NA rows within `region`, so they don't confuse the
 analysis.
 
 ```{r barplot}
 # Barplot grouped by continent
 sub <- data[with(data, !is.na(`Energy use (kg of oil equivalent per capita)`) &
-                            !is.na(continent)),]
-ggplotly(ggplot(sub, aes(x=continent, y=`Energy use (kg of oil equivalent per capita)`))+
-  geom_bar(stat="identity", position="dodge")+
-  labs(title="Energy use by continent, 1962-2007"))
+  !is.na(continent)), ]
+ggplotly(ggplot(sub, aes(x = continent, y = `Energy use (kg of oil equivalent per capita)`)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "Energy use by continent, 1962-2007"))
 ```
 
 We can see from the plot above that the data is almost Gaussian looking with Asia being the highest
@@ -185,7 +173,7 @@ between groups.
 
 ```{r anova}
 # anova model
-aov.model <- aov(`Energy use (kg of oil equivalent per capita)` ~ continent, data=sub)
+aov.model <- aov(`Energy use (kg of oil equivalent per capita)` ~ continent, data = sub)
 p.value <- summary(aov.model)[[1]][["Pr(>F)"]][1]
 ```
 
@@ -197,8 +185,8 @@ multiple comparison test.
 
 ```{r tukeyHSD}
 # tukeyHSD setting margins for the plot
-par(mar=c(6,8,3,1))
-plot(TukeyHSD(aov.model),las=1)
+par(mar = c(6, 8, 3, 1))
+plot(TukeyHSD(aov.model), las = 1)
 ```
 
 Looking at the output from the Tukey HSD model, we can see that the only non-significant comparisons
@@ -217,7 +205,7 @@ Asia.
 
 ```{r subset data import goods}
 # Subset data frame
-after.1990 <- data %>% filter(Year >= 1990 & continent %in% c('Europe', 'Asia'))
+after.1990 <- data %>% filter(Year >= 1990 & continent %in% c("Europe", "Asia"))
 ```
 
 Once we subset we get `r nrow(after.1990)` rows within our subset. 
@@ -227,12 +215,12 @@ model to compare the means of these two groups.
 
 ```{r t.test and graph}
 # first graph boxplot
-ggplotly(ggplot(after.1990, aes(x=continent, y=`Imports of goods and services (% of GDP)`))+
-  geom_boxplot()+
-  labs(title="Boxplot to compare the mean's of Asia and Europe"))
+ggplotly(ggplot(after.1990, aes(x = continent, y = `Imports of goods and services (% of GDP)`)) +
+  geom_boxplot() +
+  labs(title = "Boxplot to compare the mean's of Asia and Europe"))
 
 # Then t-test
-test.out <- t.test(`Imports of goods and services (% of GDP)` ~ continent, data=after.1990)
+test.out <- t.test(`Imports of goods and services (% of GDP)` ~ continent, data = after.1990)
 ```
 
 
@@ -251,20 +239,16 @@ We have been tasked with finding out which of the countries has the highest aver
 creating a subset of the data by year and then grab the countries that have the max amount for that year. 
 Then you can create a barplot to visualize the top countries and get a frequency table to figure out which of the countries on average is high throughout the years.
 ```{r subset Population}
-# Grab the top population density countries over the years
-grab_max  <- function (df) {
-  top <- df %>% filter(`Population density (people per sq. km of land area)` == max(na.omit(`Population density (people per sq. km of land area)`)))
-  x <- data.frame(max.country=top$`Country Name`,pop=top$`Population density (people per sq. km of land area)`)
-  return(x)
-}
-# top countries and number
-avg_country <- ddply(data, .(Year), grab_max)
+# Grab the max pops for each year
+avg_country <- data %>%
+  group_by(Year) %>%
+  slice_max(order_by = `Population density (people per sq. km of land area)`)
 
-#plotly graph 
-ggplotly(ggplot(avg_country, aes(x=Year, y=pop, fill=max.country))+
-  geom_bar(stat="identity")+
-  labs(title='Max Population Density by Year since 1962')+
-  theme(plot.title = element_text(hjust=0.5)))
+# plotly graph
+ggplotly(ggplot(avg_country, aes(x = Year, y = `Population density (people per sq. km of land area)`, fill = `Country Name`)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Max Population Density by Year since 1962") +
+  theme(plot.title = element_text(hjust = 0.5)))
 ```
 Looking at the bar graph above, we can see that the top population density per year oscillates
 between only two options. Macao SAR, China (red) and Monaco (blue). We can see that Macao SAR, China
@@ -283,42 +267,32 @@ creating a separate dataset that has only the year 1962 (lower bound of the Year
 upper bound minus the lower bound and get our change over time. 
 
 ```{r question 4 plot}
-# Function to grab the difference between the 2007 - 1962 Life Expectancy
-diff_life <- function (df) {
-  unique_names <- unique(df$`Country Name`)
-  x <- data.frame(country=unique_names, year_range=0)
-  year.1962 <- df[df$Year == 1962,]
-  year.2007 <- df[df$Year == 2007,]
-  count = 0
-  for (name in unique_names) {
-    count = count + 1
-    true.2007 <- name %in% year.2007$`Country Name`
-    true.1962 <- name %in% year.1962$`Country Name`
-    if (all(true.2007 & true.1962)) {
-      diff_nums <- year.2007[year.2007$`Country Name` == name,]$`Life expectancy at birth, total (years)` -
-        year.1962[year.1962$`Country Name` == name,]$`Life expectancy at birth, total (years)`
-      x[count,]$year_range <- diff_nums
-    }
-  }
-  return(x)
-}
 
-# full range df
-y <- diff_life(data)
+# grab the difference between 2007 and 1962 in a dataframe
+y <- data %>%
+  filter(Year %in% c(1962, 2007) & !is.na(`Life expectancy at birth, total (years)`)) %>%
+  group_by(`Country Name`) %>%
+  filter(n() == 2) %>%
+  mutate(diff_nums = `Life expectancy at birth, total (years)`[Year == 2007] - `Life expectancy at birth, total (years)`[Year == 1962]) %>%
+  filter(Year == 2007)
 
 # order data
-order.total <- y[order(y$year_range, decreasing=TRUE),]
-top.five <- order.total[1:5,]
+order.total <- y[order(y$diff_nums, decreasing = TRUE), ]
+top.five <- order.total[1:5, ]
 
 # Data
-ggplotly(ggplot(y, aes(x=reorder(country,year_range), y=year_range))+
-  geom_bar(stat="identity")+
-  labs(title="Country Life Expectancy Increase from 1962-2007",
-       x="Countries", y="Increase of Life Expectancy")+
-  theme(axis.text.x=element_blank(),
-        axis.ticks.x=element_blank()))
+ggplotly(ggplot(y, aes(x = reorder(`Country Name`, diff_nums), y = diff_nums)) +
+  geom_bar(stat = "identity") +
+  labs(
+    title = "Country Life Expectancy Increase from 1962-2007",
+    x = "Countries", y = "Increase of Life Expectancy"
+  ) +
+  theme(
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank()
+  ))
 
-knitr::kable(top.five)
+knitr::kable(top.five[, c("Country Name", "diff_nums")])
 ```
 
 After taking the difference between the Life Expectancy of 1962 to 2007 for each country. We then
@@ -329,14 +303,18 @@ worse in life expectancy.
 
 
 ```{r generate nice line plot}
-top.full.five <- data %>% filter(`Country Name` %in% c("Maldives", "Bhutan",
-                                                       "Timor-Leste", "Tunisia", "Oman", "Nepal"))
+top.full.five <- data %>% filter(`Country Name` %in% c(
+  "Maldives", "Bhutan",
+  "Timor-Leste", "Tunisia", "Oman", "Nepal"
+))
 
-ggplotly(ggplot(top.full.five, aes(x=Year, y=`Life expectancy at birth, total (years)`,
-                                   color=`Country Name`, group=`Country Name`))+
-         geom_line()+
-         geom_point()+
-         labs(title="Life Expectancy Increasing from 1962 to 2007"))
+ggplotly(ggplot(top.full.five, aes(
+  x = Year, y = `Life expectancy at birth, total (years)`,
+  color = `Country Name`, group = `Country Name`
+)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "Life Expectancy Increasing from 1962 to 2007"))
 ```
 
 If we graph the top five we can see that the Maldives just barely beats out some of the other top 
