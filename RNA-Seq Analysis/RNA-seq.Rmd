@@ -1,0 +1,36 @@
+---
+title: 'RNA-Seq Analysis'
+author: 'Andrew Powers'
+---
+
+```{r load libraries in}
+library('recount')
+library(tidyverse)
+library("DESeq2")
+```
+
+```{r load in data}
+recount_brain <- add_metadata()
+interest <- subset(recount_brain)
+url  <- download_study("SRP026562")
+
+load(file.path('SRP026562', 'rse_gene.Rdata'))
+# how to see the data
+rse <- rse_gene
+condition <- c(rep('control',6),rep('alzheimer',6))
+rse@colData$condition <- factor(condition, levels=c('control', 'alzheimer'),
+  labels=c('control', 'alzheimer'))
+```
+
+```{r get the DSEq loaded in}
+# load the data into a DESeq2
+ddsSE <- DESeqDataSet(rse, design = ~ condition)
+keep_dds <- rowSums(counts(ddsSE)) >= 10
+dds <- ddsSE[keep_dds,]
+
+dds_run <- DESeq(dds)
+res <- results(dds_run)
+res
+```
+
+
