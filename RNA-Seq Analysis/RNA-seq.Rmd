@@ -1,25 +1,51 @@
 ---
 title: 'RNA-Seq Analysis'
 author: 'Andrew Powers'
+output: 
+  html_document:
+    code_folding: hide
 ---
 
 ```{r load libraries in}
-library('recount')
-library(tidyverse)
-library("DESeq2")
+knitr::opts_chunk$set(echo=T, warning=F, message=F)
+suppressPackageStartupMessages(library(tidyverse))
+suppressPackageStartupMessages(library("DESeq2"))
+suppressPackageStartupMessages(library(pheatmap))
+library(RColorBrewer)
+library(DT)
+options(digits=2)
+
 ```
 
-```{r load in data}
-recount_brain <- add_metadata()
-interest <- subset(recount_brain)
-url  <- download_study("SRP026562")
+# Introduction
 
+Alzheimer's is a debilitating disease that affects about 6 million people living in the United States, 
+according to the Alazheim'ers Association. One in three seniors die from some form of dementia. As
+our populations continue to live longer and we make more advances in science, the amount of people
+affected by dementia will keep increasing.
+We have been tasked with running a RNA-Seq analysis upon this publicly available data from Recount2.
+
+## Study Explanation
+
+The data is a publicly available dataset that can be found on the Recount2 website. The project
+ID is SRP02656. They collected 12 samples in total, with 6 samples coming form normal to early stage
+Alzheimers and the other 6 coming from late stage alzheimer's patients.
+
+```{r load in data}
+#recount_brain <- add_metadata()
+#interest <- subset(recount_brain)
+#url  <- download_study("SRP026562")
+
+# Load in the data from the downloaded file
 load(file.path('SRP026562', 'rse_gene.Rdata'))
-# how to see the data
+#convert rse_gene to something small
 rse <- rse_gene
+# Add the additional labels of Alzheimers and Control to the dataset to test on
 condition <- c(rep('control',6),rep('alzheimer',6))
 rse@colData$condition <- factor(condition, levels=c('control', 'alzheimer'),
   labels=c('control', 'alzheimer'))
+# Add the additional labels for Sex, so we can check to see if it is important
+rse@colData$sex <- ifelse(sum(grepl('female', rse@colData$characteristics)), 'female', 'male')
 ```
 
 ```{r get the DSEq loaded in}
@@ -28,9 +54,112 @@ ddsSE <- DESeqDataSet(rse, design = ~ condition)
 keep_dds <- rowSums(counts(ddsSE)) >= 10
 dds <- ddsSE[keep_dds,]
 
-dds_run <- DESeq(dds)
-res <- results(dds_run)
-res
 ```
+
+
+# Quality Control
+
+## Heatmap Between/Within Samples
+
+
+```{r heatmap stuff}
+
+ddsSE <- estimateSizeFactors(ddsSE)
+vst.dds <- vst(ddsSE, blind=TRUE)
+vst.mat.all <- assay(vst.dds)
+vst.cor.all <- cor(vst.mat.all)
+metadata <- data.frame(condition, row.names=rownames(vst.cor.all))
+metadata <- cbind(metadata, rse@colData$sex)
+colnames(metadata)[2] <- 'Sex'
+pheatmap(vst.cor.all, annotation = metadata)
+```
+Explain the heatmap
+
+
+## PCA Plot
+```{r ma plot}
+# MA plot for differences
+plotPCA(vst.dds, intgroup="condition")+
+  labs(title="PCA Plot colored by Condition")+
+  theme(plot.title = element_text(hjust=0.5))
+
+
+plotPCA(vst.dds, intgroup="sex")+
+  labs(title="PCA Plot colored by Sex")+
+  theme(plot.title = element_text(hjust=0.5))
+```
+
+
+## DE Analysis
+
+```{r test}
+dds_run <- DESeq(dds)
+
+plotDispEsts(dds_run, main='Dispersion Plot')
+
+res <- results(dds_run,
+               contrast= c("condition", "alzheimer", "control"),
+               alpha=0.5,
+               lfcThreshold=0.32)
+
+top.five <- res %>%
+  data.frame() %>% 
+  slice_max(order_by=stat, n=5)
+
+
+res <- lfcShrink(dds_run,
+                 contrast= c("condition", "alzheimer", "control"),
+                 res = res,
+                 type="ashr")
+
+
+plotMA(res, ylim=c(-8,8))
+
+```
+
+### Top Significant DEGs
+
+```{r Result exploration}
+#sub the normalized counts out
+heat.colors <- brewer.pal(6, "YlOrRd")
+ sig.genes <- res %>%
+  data.frame() %>%
+  filter(padj < 0.05)
+sig.gene.counts <- vst.mat.all[rownames(sig.genes),]
+pheatmap(sig.gene.counts,
+         color=heat.colors,
+         cluster_rows=T,
+         show_rownames=F,
+         annotation = metadata,
+         scale="row")
+
+
+deg.top <- sig.genes %>% 
+  slice_max(log2FoldChange, n=10)
+deg.bottom <- sig.genes %>%
+  slice_min(log2FoldChange, n=10)
+
+deg.all <- rbind(deg.top, deg.bottom)
+deg.gene.counts <- vst.mat.all[rownames(deg.all),]
+pheatmap(deg.gene.counts,
+         color=heat.colors,
+         cluster_rows=T,
+         show_rownames=T,
+         annotation = metadata,
+         scale="row",
+         main="Top 10 Upregulated and Downregulated Genes Heatmap")
+```
+
+```{r volcano plot}
+res_all  <- res.df %>%
+  rownames_to_column(var = "ensgene") %>%
+  mutate(threshold = padj < 0.05)
+
+ggplot(res_all, aes(x=log2FoldChange, y=-log10(padj), color=threshold))+
+  geom_point()+
+  labs(x='Log2 Fold Change', y='-Log10 Adjusted p-value', title='Volcano Plot')+
+  theme(legend.position = "none", plot.title = element_text(hjust=0.5))
+```
+
 
 
